@@ -115,23 +115,6 @@ void setup(){
 
   //Initialize the serial ports that will be in communication
   Serial.begin(9600);
-  Serial1.begin(9600);
-  //Serial port for the random number generator
-  Serial2.begin(9600);
-
-  //When the arduino is reset everything is set to low.
-
-  //initialize pins
-  pinMode(11, OUTPUT); //sets pin 11 to output
-  pinMode(10, INPUT);  //sets pin 10 to input
-
-
-  //turn on pin to signal that we are online
-  digitalWrite(11, HIGH);
-
-  //wait for other arduino to come online
-  while(digitalRead(10)==LOW){
-  }
 
   //This is our secret key
   uint32_t a = keyGen();
@@ -142,37 +125,12 @@ void setup(){
   Serial.print("Shared index is: ");
   Serial.println(A);
 
-  uint8_t tempBits = 0;
+  //This is our secret key
+  uint32_t b = keyGen();
 
-  uint32_t receivedBits;
-
-  uint32_t B = 0;
-
-  digitalWrite(11,LOW);
-
-  for(int i = 0 ; i < 4 ; i++){
-
-    //WAIT FOR THE OTHER HERE
-    digitalWrite(11,HIGH);
-    while(digitalRead(10)==LOW){
-    }
-
-    //shifting from the end to the beggining    
-    tempBits = A >> 8*(3-i); //shift by one byte at a time
-    tempBits = tempBits & 0xff;
-    Serial1.write(tempBits);
-
-    receivedBits = 0;
-
-    while(Serial1.available() == 0){
-    } //wait until the there are bits in the serial
-    receivedBits = Serial1.read();
-
-    receivedBits = receivedBits<<8*(3-i);
-    B=B | receivedBits; 
-    digitalWrite(11,LOW);
-  }
-
+  //This is our shared index 'A'
+  uint32_t B = pow_mod(generator, a, prime);
+  
   Serial.print("Received shared index is: ");
   Serial.println(B);
 
@@ -188,24 +146,6 @@ void setup(){
 
 //This was taken from the "Multi Serial Mega" Arduino example and modifified with the XOR function.
 void loop(){
-
-  // read from serial port 1, and send to serial monitor on port 0
-  if (Serial1.available()) {
-    // returns one byte of unsigned serial data, or -1 if none available
-    int16_t inByte = Serial1.read();  //mask out lower 8 bits from k
-    Serial.write(inByte^(random(256)));
-    if(inByte = '\n')
-      randomSeed(k);
-  }
-
-  // read from serial monitor on port 0, and send to port 1
-  if (Serial.available()) {
-    // returns one byte of unsigned serial data, or -1 if none available
-    int16_t inByte = Serial.read();   //mask out lower 8 bits from k
-    Serial1.write(inByte^(random(256)));
-    if(inByte ='\n')
-      randomSeed(k);
-  }
 
 }
 
