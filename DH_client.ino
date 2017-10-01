@@ -31,8 +31,9 @@
 const char *ssid = "SensorAP";
 const char *password = "12345678";
 
-WiFiServer server(23);
-WiFiClient serverClients[MAX_SRV_CLIENTS];
+const char* host = "192.168.4.1";
+
+WiFiClient client;
 
 //public variable representing the shared secret key.
 uint32_t k; 
@@ -130,23 +131,51 @@ uint32_t pow_mod(uint32_t b, uint32_t e, uint32_t m)
 void setup(){
   delay(1000);
   Serial.begin(115200);
-  Serial.println();
-  Serial.print("Configuring access point...");
-  /* You can remove the password parameter if you want the AP to be open. */
-  WiFi.softAP(ssid, password);
+  delay(10);
 
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
- 
-  server.begin();
-  server.setNoDelay(true);
+  // We start by connecting to a WiFi network
+
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");  
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
+  delay(2000);
+
+  Serial.print("connecting to ");
+  Serial.println(host);
+  
+  // Use WiFiClient class to create TCP connections
+
+  const int port = 23;
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+
 }
 
 //Now lets send characters back and forth. This is encrypted with our secret key 'k' in conjuction with the xor function.
 
 //This was taken from the "Multi Serial Mega" Arduino example and modifified with the XOR function.
 void loop(){
+  delay(2000);
+  while(client.available()){
+    A = client.parseInt;
+    Serial.print(line);
+  }
  
   if (server.hasClient()){
     for(i = 0; i < MAX_SRV_CLIENTS; i++){
