@@ -21,6 +21,18 @@
  order to sync the arduinos due to compilation speed inconsistencies between the two pcs.
  
  */
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+
+//how many clients should be able to telnet to this ESP8266
+#define MAX_SRV_CLIENTS 1
+
+/* Set these to your desired credentials. */
+const char *ssid = "SensorAP";
+const char *password = "12345678";
+
+WiFiServer server(23);
+WiFiClient serverClients[MAX_SRV_CLIENTS];
 
 //public variable representing the shared secret key.
 uint32_t k; 
@@ -29,10 +41,16 @@ const uint32_t prime = 2147483647;
 //generator
 const uint32_t generator = 16807;  
 
+uint32_t a;
+uint32_t A;
+
+uint32_t b;
+uint32_t B;
+
 //generates our 8 bit private secret 'a'.
 uint32_t keyGen(){
   //Seed the random number generator with a reading from an unconnected pin, I think this on analog pin 2
-  randomSeed(analogRead(2));
+  randomSeed(analogRead(0));
 
   //return a random number between 1 and our prime .
   return random(1,prime);
@@ -110,44 +128,73 @@ uint32_t pow_mod(uint32_t b, uint32_t e, uint32_t m)
 }
 
 void setup(){
+  delay(1000);
+  Serial.begin(115200);
+  Serial.println();
+  Serial.print("Configuring access point...");
+  /* You can remove the password parameter if you want the AP to be open. */
+  WiFi.softAP(ssid, password);
 
-
-
-  //Initialize the serial ports that will be in communication
-  Serial.begin(9600);
-
-  //This is our secret key
-  uint32_t a = keyGen();
-
-  //This is our shared index 'A'
-  uint32_t A = pow_mod(generator, a, prime);
-
-  Serial.print("Shared index is: ");
-  Serial.println(A);
-
-  //This is our secret key
-  uint32_t b = keyGen();
-
-  //This is our shared index 'A'
-  uint32_t B = pow_mod(generator, a, prime);
-  
-  Serial.print("Received shared index is: ");
-  Serial.println(B);
-
-  //This is our shared secret encryption key.
-  k = pow_mod(B, a, prime);
-
-  //reseed the random number generator with the shared secret key k
-  randomSeed(k);
-
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+ 
+  server.begin();
+  server.setNoDelay(true);
 }
 
 //Now lets send characters back and forth. This is encrypted with our secret key 'k' in conjuction with the xor function.
 
 //This was taken from the "Multi Serial Mega" Arduino example and modifified with the XOR function.
 void loop(){
+ 
+  if (server.hasClient()){
+    for(i = 0; i < MAX_SRV_CLIENTS; i++){
+      //find free/disconnected spot
+      if (!serverClients[i] || !serverClients[i].connected()){
+        if(serverClients[i]) serverClients[i].stop();
+        serverClients[i] = server.available();
+        Serial1.print("New client: "); Serial1.print(i);
+        continue;
+      }
+    }
+    //no free/disconnected spot so reject
+    WiFiClient serverClient = server.available();
+    serverClient.stop();
+  }
+  //check clients for data
+  for(i = 0; i < MAX_SRV_CLIENTS; i++){
+    if (serverClients[i] && serverClients[i].connected()){
+      if(serverClients[i].available()){
+        //get data from the telnet client and push it to the UART
+        //This is our secret key
+        a = keyGen();
 
+        //This is our shared index 'A'
+        A = pow_mod(generator, a, prime);
+
+        Serial.print("Shared A index is: ");
+        Serial.println(A);
+
+        serverClients[i].println(A);
+       
+        while(serverClients[i].available()) {
+         
+         B = serverClients[i].parseInt();
+         
+         Serial.print("Shared B index is: ");
+         Serial.println(B);
+         
+         //This is our shared secret encryption key.
+         k = pow_mod(B, a, prime);
+         
+         Serial.print("Shared secret key is: ");
+         Serial.println(k);
+
+         //reseed the random number generator with the shared secret key k
+         randomSeed(k);
+        }
+      }
+    }
+  }
 }
-
-
-
