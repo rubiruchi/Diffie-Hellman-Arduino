@@ -154,7 +154,6 @@ void loop(){
       if (!serverClients[i] || !serverClients[i].connected()){
         if(serverClients[i]) serverClients[i].stop();
         serverClients[i] = server.available();
-        Serial1.print("New client: "); Serial1.print(i);
         continue;
       }
     }
@@ -167,6 +166,14 @@ void loop(){
     if (serverClients[i] && serverClients[i].connected()){
       if(serverClients[i].available()){
         //get data from the telnet client and push it to the UART
+       
+        while(serverClients[i].available()) {
+         
+          B = serverClients[i].parseInt();
+
+          Serial.print("Shared B index is: ");
+          Serial.println(B);
+        }
         //This is our secret key
         a = keyGen();
 
@@ -178,22 +185,14 @@ void loop(){
 
         serverClients[i].println(A);
        
-        while(serverClients[i].available()) {
-         
-         B = serverClients[i].parseInt();
-         
-         Serial.print("Shared B index is: ");
-         Serial.println(B);
-         
-         //This is our shared secret encryption key.
-         k = pow_mod(B, a, prime);
-         
-         Serial.print("Shared secret key is: ");
-         Serial.println(k);
+        //This is our shared secret encryption key.
+        k = pow_mod(B, a, prime);
 
-         //reseed the random number generator with the shared secret key k
-         randomSeed(k);
-        }
+        Serial.print("Shared secret key is: ");
+        Serial.println(k);
+
+        //reseed the random number generator with the shared secret key k
+        randomSeed(k);
       }
     }
   }
