@@ -172,58 +172,27 @@ void setup(){
 //This was taken from the "Multi Serial Mega" Arduino example and modifified with the XOR function.
 void loop(){
   delay(2000);
-  while(client.available()){
-    A = client.parseInt;
+  
+  b = keyGen();
+
+  //This is our shared index 'B'
+  B = pow_mod(generator, b, prime);
+   
+  // Send our shared index
+  client.println(B);
+  
+  // Wait for reply
+  while(!client.available());
+  if(client.available()) {
+    A = client.parseInt();
     Serial.print(line);
   }
- 
-  if (server.hasClient()){
-    for(i = 0; i < MAX_SRV_CLIENTS; i++){
-      //find free/disconnected spot
-      if (!serverClients[i] || !serverClients[i].connected()){
-        if(serverClients[i]) serverClients[i].stop();
-        serverClients[i] = server.available();
-        Serial1.print("New client: "); Serial1.print(i);
-        continue;
-      }
-    }
-    //no free/disconnected spot so reject
-    WiFiClient serverClient = server.available();
-    serverClient.stop();
-  }
-  //check clients for data
-  for(i = 0; i < MAX_SRV_CLIENTS; i++){
-    if (serverClients[i] && serverClients[i].connected()){
-      if(serverClients[i].available()){
-        //get data from the telnet client and push it to the UART
-        //This is our secret key
-        a = keyGen();
+   //This is our shared secret encryption key.
+  k = pow_mod(A, b, prime);
 
-        //This is our shared index 'A'
-        A = pow_mod(generator, a, prime);
+  Serial.print("Shared secret key is: ");
+  Serial.println(k);
 
-        Serial.print("Shared A index is: ");
-        Serial.println(A);
-
-        serverClients[i].println(A);
-       
-        while(serverClients[i].available()) {
-         
-         B = serverClients[i].parseInt();
-         
-         Serial.print("Shared B index is: ");
-         Serial.println(B);
-         
-         //This is our shared secret encryption key.
-         k = pow_mod(B, a, prime);
-         
-         Serial.print("Shared secret key is: ");
-         Serial.println(k);
-
-         //reseed the random number generator with the shared secret key k
-         randomSeed(k);
-        }
-      }
-    }
-  }
+  //reseed the random number generator with the shared secret key k
+  randomSeed(k);
 }
